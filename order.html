@@ -1,1 +1,539 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Order Items | Graceville Conservative Baptist Church</title><link rel="stylesheet" href="css/style.css"></head><body><div class="topbar"><div class="container"><span>Graceville Conservative Baptist Church</span><span>Faith • Fellowship • Service • Mission</span></div></div><nav class="navbar"><div class="container nav"><a class="brand" href="index.html"><img src="assets/church-logo.png"><span>GRACEVILLE<br>CONSERVATIVE BAPTIST CHURCH</span></a><button class="menu">☰</button><div class="links"><a href="index.html">Home</a><a href="mens-ministry.html">Men</a><a href="women-of-grace.html">Women</a><a href="alab.html">ALAB</a><a href="beacons.html">Beacons</a><a href="fireflies.html">Fireflies</a><a href="missions.html">Missions</a><a href="order.html">Order Items</a></div></div></nav><section class="pagehero"><div class="container"><div class="eyebrow">Church Store</div><h1>Order Items</h1><p>Submit an order request for church items. The form is structured to connect to a real backend.</p></div></section><section class="section"><div class="container"><div id="product-list" class="product-list"></div><div class="form"><div class="notice"><b>Order request</b><br>Your request is saved to the website order database. The church team will contact you to confirm availability, final price, and pickup.</div><form onsubmit="submitOrder(event)"><div class="fg"><div><label>Full name<input name="customerName" required placeholder="Juan Dela Cruz"></label></div><div><label>Email<input name="email" type="email" required placeholder="juan@email.com"></label></div><div><label>Phone number<input name="phone" required placeholder="09XXXXXXXXX"></label></div><div><label>Item<select name="item" required><option value="">Choose an item</option><option>Church T-Shirt</option><option>ALAB Mug</option><option>Church Tote Bag</option><option>Other</option></select></label></div><div><label>Quantity<input name="quantity" type="number" min="1" value="1" required></label></div><div><label>Preferred pickup date<input name="pickupDate" type="date"></label></div><div class="full"><label>Notes / size / color<textarea name="notes" placeholder="Example: 1 Large black shirt, 1 Medium black shirt"></textarea></label></div><div class="full"><button class="btn primary" type="submit">Submit order request</button></div></div></form></div></div></section><footer class="footer"><div class="container"><div class="footgrid"><div><img src="assets/church-logo.png" style="width:82px;filter:grayscale(1) brightness(2)"><h3>Graceville Conservative Baptist Church</h3><p>A welcoming online home for worship, fellowship, ministry, service, and mission.</p></div><div><h3>Ministries</h3><p><a href="mens-ministry.html">Men's Ministry</a><br><a href="women-of-grace.html">Women of Grace</a><br><a href="alab.html">ALAB</a><br><a href="beacons.html">Beacons</a><br><a href="fireflies.html">Fireflies</a></p></div><div><h3>Connect</h3><p><a href="missions.html">Support Missions</a><br><a href="order.html">Order Items</a><br>church@example.com<br>+63 9XX XXX XXXX</p></div></div><div class="bottom">© 2026 Graceville Conservative Baptist Church. Customize the contact details before publishing.</div></div></footer><div class="toast"></div><script src="js/app.js"></script></body></html>
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#493020">
+  <title>Church Merchandise | Graceville Conservative Baptist Church</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    :root {
+      --brown: #493020;
+      --gold: #c4a36a;
+      --cream: #faf7f0;
+      --ink: #30271f;
+      --muted: #756b60;
+      --line: #e9e0d3;
+    }
+
+    .shop { background: var(--cream); padding: 55px 0 75px; }
+    .shop-intro { text-align: center; max-width: 680px; margin: 0 auto 35px; }
+    .shop-intro .eyebrow { color: #967440; letter-spacing: 3px; font-size: 12px; font-weight: 700; }
+    .shop-intro h2 { color: var(--brown); font-size: clamp(30px, 4vw, 45px); margin: 12px 0; }
+    .shop-intro p { color: var(--muted); line-height: 1.8; }
+
+    .shop-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .shop-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      justify-content: space-between; align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .shop-toolbar input, .shop-toolbar select,
+    .shop-form input, .shop-form select, .shop-form textarea {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--line);
+      border-radius: 9px; background: #fff; color: var(--ink);
+      font: inherit; box-sizing: border-box;
+    }
+
+    .shop-toolbar input { max-width: 280px; }
+    .shop-toolbar select { width: auto; min-width: 140px; }
+
+    .merch-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+
+    .merch-card {
+      background: white; border: 1px solid var(--line);
+      border-radius: 15px; overflow: hidden; transition: .2s;
+    }
+
+    .merch-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px #49302012; }
+    .merch-photo { aspect-ratio: 4 / 3; background: #eee5d8; overflow: hidden; }
+    .merch-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .merch-info { padding: 18px; }
+    .merch-category { color: #987849; text-transform: uppercase; letter-spacing: 1.5px; font-size: 10px; font-weight: 700; }
+    .merch-info h3 { margin: 8px 0; color: var(--brown); font-size: 19px; }
+    .merch-description { color: var(--muted); font-size: 13px; line-height: 1.6; min-height: 40px; }
+    .merch-price { color: var(--brown); font-size: 21px; font-weight: 800; margin: 14px 0; }
+
+    .merch-info label, .shop-form label {
+      display: block; color: var(--ink); font-size: 13px;
+      font-weight: 600; margin: 12px 0 6px;
+    }
+
+    .merch-info select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+    .shop-btn { border: 0; border-radius: 8px; padding: 12px 16px; cursor: pointer; font: inherit; font-weight: 700; }
+    .shop-btn.primary { background: var(--brown); color: white; width: 100%; margin-top: 13px; }
+    .shop-btn.primary:hover { background: #65452e; }
+    .shop-btn.gold { background: var(--gold); color: #24180f; }
+    .shop-btn.remove { padding: 5px 9px; background: #f6ece7; color: #8b3527; font-size: 12px; }
+
+    .cart-panel {
+      background: white; border: 1px solid var(--line);
+      border-radius: 15px; padding: 22px; position: sticky; top: 20px;
+    }
+
+    .cart-panel h2 { color: var(--brown); font-size: 22px; margin-top: 0; }
+    .cart-count { color: var(--muted); font-size: 13px; }
+    .cart-item { border-bottom: 1px solid var(--line); padding: 14px 0; }
+    .cart-item-top { display: flex; justify-content: space-between; gap: 10px; }
+    .cart-item strong { color: var(--brown); font-size: 14px; }
+    .cart-item small { display: block; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .cart-qty { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .cart-qty button { border: 1px solid var(--line); border-radius: 6px; background: white; padding: 4px 10px; cursor: pointer; }
+    .cart-total { display: flex; justify-content: space-between; padding: 18px 0; color: var(--brown); font-size: 19px; font-weight: 800; }
+    .cart-empty { color: var(--muted); padding: 18px 0; font-size: 14px; }
+    .shop-form { border-top: 1px solid var(--line); padding-top: 15px; margin-top: 8px; }
+    .shop-form textarea { min-height: 75px; resize: vertical; }
+    .shop-form .fine-print { font-size: 11px; line-height: 1.6; color: var(--muted); }
+    .shop-status { margin-top: 14px; padding: 12px; border-radius: 8px; display: none; font-size: 13px; line-height: 1.6; }
+    .shop-status.show { display: block; }
+    .shop-status.error { background: #fff0ee; color: #8b3024; }
+    .shop-status.success { background: #edf7ee; color: #245c32; }
+    .no-products { grid-column: 1/-1; padding: 35px; text-align: center; color: var(--muted); background: white; border-radius: 12px; }
+
+    @media(max-width: 850px) {
+      .shop-layout { grid-template-columns: 1fr; }
+      .cart-panel { position: static; }
+    }
+    @media(max-width: 480px) {
+      .merch-grid { grid-template-columns: 1fr; }
+      .shop-toolbar input { max-width: none; }
+      .shop-toolbar select { flex: 1; }
+      .merch-info { padding: 15px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="container">
+      <span>Graceville Conservative Baptist Church</span>
+      <span>Faith • Fellowship • Service • Mission</span>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <img src="assets/church-logo.png" alt="Church logo">
+        <span>GRACEVILLE<br>CONSERVATIVE BAPTIST CHURCH</span>
+      </a>
+      <button class="menu" type="button" aria-label="Toggle navigation">☰</button>
+      <div class="links">
+        <a href="index.html">Home</a>
+        <a href="mens-ministry.html">Men</a>
+        <a href="women-of-grace.html">Women</a>
+        <a href="alab.html">ALAB</a>
+        <a href="beacons.html">Beacons</a>
+        <a href="fireflies.html">Fireflies</a>
+        <a href="missions.html">Missions</a>
+        <a href="order.html" aria-current="page">Order Items</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="pagehero">
+    <div class="container">
+      <div class="eyebrow">THE GRACEVILLE CHURCH STORE</div>
+      <h1>Merchandise &amp; Orders</h1>
+      <p>Carry a reminder of faith, fellowship, and our church community wherever you go.</p>
+    </div>
+  </section>
+
+  <main class="shop">
+    <div class="container">
+      <div class="shop-intro">
+        <div class="eyebrow">MADE FOR OUR COMMUNITY</div>
+        <h2>Shop Church Merchandise</h2>
+        <p>Explore our merchandise, select your preferred options, and send your order request to the church team for confirmation.</p>
+      </div>
+
+      <div class="shop-layout">
+        <section aria-label="Merchandise products">
+          <div class="shop-toolbar">
+            <input id="product-search" type="search" placeholder="Search merchandise..." aria-label="Search merchandise">
+            <select id="category-filter" aria-label="Filter by category">
+              <option value="all">All items</option>
+              <option value="apparel">Apparel</option>
+              <option value="accessories">Accessories</option>
+              <option value="ministry">Ministry items</option>
+            </select>
+          </div>
+          <div id="product-list" class="merch-grid" aria-live="polite"></div>
+        </section>
+
+        <aside class="cart-panel">
+          <h2><span aria-hidden="true">🛍</span> Your Order</h2>
+          <div id="cart-count" class="cart-count">0 items selected</div>
+          <div id="cart-items">
+            <p class="cart-empty">Your cart is empty. Choose an item to get started!</p>
+          </div>
+          <div class="cart-total">
+            <span>Subtotal</span>
+            <span id="cart-total">₱0.00</span>
+          </div>
+
+          <form id="checkout-form" class="shop-form">
+            <h3>Customer Details</h3>
+
+            <label for="customer-name">Full name *</label>
+            <input id="customer-name" name="customerName" autocomplete="name" required maxlength="120" placeholder="Juan Dela Cruz">
+
+            <label for="customer-email">Email address *</label>
+            <input id="customer-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="juan@email.com">
+
+            <label for="customer-phone">Phone number *</label>
+            <input id="customer-phone" name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="09XXXXXXXXX">
+
+            <label for="pickup-date">Preferred pickup date</label>
+            <input id="pickup-date" name="pickupDate" type="date">
+
+            <label for="order-notes">Additional notes</label>
+            <textarea id="order-notes" name="notes" maxlength="1000" placeholder="Pickup preferences or other requests"></textarea>
+
+            <button id="submit-order" class="shop-btn primary" type="submit">Submit Order Request</button>
+
+            <p class="fine-print">Your order is a request, not a confirmed purchase. The church team will contact you to confirm availability, final pricing, and payment or pickup arrangements.</p>
+            <div id="order-status" class="shop-status" role="status" aria-live="polite"></div>
+          </form>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footgrid">
+        <div>
+          <img src="assets/church-logo.png" alt="Church logo" style="width:82px;filter:grayscale(1) brightness(2)">
+          <h3>Graceville Conservative Baptist Church</h3>
+          <p>A welcoming online home for worship, fellowship, ministry, service, and mission.</p>
+        </div>
+        <div>
+          <h3>Ministries</h3>
+          <p>
+            <a href="mens-ministry.html">Men's Ministry</a><br>
+            <a href="women-of-grace.html">Women of Grace</a><br>
+            <a href="alab.html">ALAB</a><br>
+            <a href="beacons.html">Beacons</a><br>
+            <a href="fireflies.html">Fireflies</a>
+          </p>
+        </div>
+        <div>
+          <h3>Connect</h3>
+          <p>
+            <a href="missions.html">Support Missions</a><br>
+            <a href="order.html">Order Items</a><br>
+            <a href="mailto:gcbcbeacons@gmail.com">gcbcbeacons@gmail.com</a><br>
+            <a href="tel:+639937588624">+63 993 758 8624</a>
+          </p>
+        </div>
+      </div>
+      <div class="bottom">© 2026 Graceville Conservative Baptist Church. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <div class="toast" aria-live="polite"></div>
+
+  <script>
+    /*
+      IMPORTANT:
+      These are sample products and prices.
+      Replace them with the actual products, prices and image paths.
+      Product images should be stored in your repository or uploaded storage.
+    */
+    const PRODUCTS = [
+      {
+        id: "church-shirt",
+        name: "Church T-Shirt",
+        category: "apparel",
+        price: 350,
+        description: "A comfortable shirt for church gatherings and fellowship.",
+        image: "assets/merch/church-shirt.jpg",
+        options: {
+          Size: ["S", "M", "L", "XL", "2XL"],
+          Color: ["Black", "White", "Brown"]
+        }
+      },
+      {
+        id: "alab-shirt",
+        name: "ALAB Ministry Shirt",
+        category: "ministry",
+        price: 350,
+        description: "Ministry-inspired apparel for ALAB members and supporters.",
+        image: "assets/merch/alab-shirt.jpg",
+        options: {
+          Size: ["S", "M", "L", "XL", "2XL"],
+          Color: ["Black", "White"]
+        }
+      },
+      {
+        id: "church-tote",
+        name: "Church Tote Bag",
+        category: "accessories",
+        price: 180,
+        description: "A reusable tote for your Bible, books, and everyday essentials.",
+        image: "assets/merch/tote-bag.jpg",
+        options: {
+          Color: ["Cream", "Black", "Brown"]
+        }
+      },
+      {
+        id: "alab-mug",
+        name: "ALAB Mug",
+        category: "ministry",
+        price: 150,
+        description: "A simple ministry-themed mug for home or the office.",
+        image: "assets/merch/alab-mug.jpg",
+        options: {
+          Color: ["White", "Cream"]
+        }
+      }
+    ];
+
+    // Change this to match your deployed backend URL if the API
+    // is hosted separately from your frontend.
+    const API_BASE = "";
+
+    const cart = [];
+    const peso = amount => "₱" + amount.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;"
+    })[char]);
+
+    function renderProducts() {
+      const search = document.getElementById("product-search").value.toLowerCase().trim();
+      const category = document.getElementById("category-filter").value;
+
+      const filtered = PRODUCTS.filter(product =>
+        product.name.toLowerCase().includes(search) &&
+        (category === "all" || product.category === category)
+      );
+
+      const list = document.getElementById("product-list");
+
+      if (!filtered.length) {
+        list.innerHTML = '<div class="no-products">No merchandise matches your search.</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(product => {
+        const options = Object.entries(product.options).map(([name, values]) => `
+          <label for="${product.id}-${name}">${escapeHTML(name)}</label>
+          <select id="${product.id}-${name}" data-option="${escapeHTML(name)}">
+            ${values.map(value => `<option value="${escapeHTML(value)}">${escapeHTML(value)}</option>`).join("")}
+          </select>
+        `).join("");
+
+        return `
+          <article class="merch-card">
+            <div class="merch-photo">
+              <img src="${escapeHTML(product.image)}"
+                   alt="${escapeHTML(product.name)}"
+                   loading="lazy"
+                   onerror="this.onerror=null;this.src='assets/church-logo.png'">
+            </div>
+            <div class="merch-info">
+              <div class="merch-category">${escapeHTML(product.category)}</div>
+              <h3>${escapeHTML(product.name)}</h3>
+              <div class="merch-description">${escapeHTML(product.description)}</div>
+              <div class="merch-price">${peso(product.price)}</div>
+              ${options}
+              <button class="shop-btn primary" type="button"
+                onclick="addToCart('${product.id}', this)">
+                Add to Order
+              </button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function addToCart(id, button) {
+      const product = PRODUCTS.find(item => item.id === id);
+      if (!product) return;
+
+      const selections = {};
+      button.closest(".merch-info").querySelectorAll("[data-option]").forEach(select => {
+        selections[select.dataset.option] = select.value;
+      });
+
+      const key = id + "|" + JSON.stringify(selections);
+      const existing = cart.find(item => item.key === key);
+
+      if (existing) {
+        existing.quantity++;
+      } else {
+        cart.push({
+          key,
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          selections,
+          quantity: 1
+        });
+      }
+
+      renderCart();
+    }
+
+    function changeQuantity(key, change) {
+      const item = cart.find(entry => entry.key === key);
+      if (!item) return;
+
+      item.quantity += change;
+
+      if (item.quantity <= 0) {
+        cart.splice(cart.indexOf(item), 1);
+      }
+
+      renderCart();
+    }
+
+    function removeItem(key) {
+      const index = cart.findIndex(item => item.key === key);
+      if (index !== -1) cart.splice(index, 1);
+      renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById("cart-items");
+      const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+      const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+      document.getElementById("cart-count").textContent =
+        `${count} item${count === 1 ? "" : "s"} selected`;
+
+      document.getElementById("cart-total").textContent = peso(total);
+      document.getElementById("submit-order").disabled = count === 0;
+      document.getElementById("submit-order").style.opacity = count ? "1" : ".55";
+
+      if (!cart.length) {
+        container.innerHTML = '<p class="cart-empty">Your cart is empty. Choose an item to get started!</p>';
+        return;
+      }
+
+      container.innerHTML = cart.map(item => {
+        const details = Object.entries(item.selections)
+          .map(([key, value]) => `${escapeHTML(key)}: ${escapeHTML(value)}`)
+          .join(" · ");
+
+        return `
+          <div class="cart-item">
+            <div class="cart-item-top">
+              <div>
+                <strong>${escapeHTML(item.name)}</strong>
+                <small>${details || "Standard item"}</small>
+                <small>${peso(item.price)} each</small>
+              </div>
+              <button class="shop-btn remove" type="button"
+                aria-label="Remove ${escapeHTML(item.name)}"
+                onclick="removeItem('${item.key}')">Remove</button>
+            </div>
+            <div class="cart-qty">
+              <button type="button" aria-label="Decrease quantity"
+                onclick="changeQuantity('${item.key}', -1)">−</button>
+              <span>${item.quantity}</span>
+              <button type="button" aria-label="Increase quantity"
+                onclick="changeQuantity('${item.key}', 1)">+</button>
+              <strong style="margin-left:auto">${peso(item.price * item.quantity)}</strong>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById("order-status");
+      status.className = "shop-status show " + type;
+      status.textContent = message;
+    }
+
+    document.getElementById("product-search").addEventListener("input", renderProducts);
+    document.getElementById("category-filter").addEventListener("change", renderProducts);
+
+    document.getElementById("checkout-form").addEventListener("submit", async event => {
+      event.preventDefault();
+
+      if (!cart.length) {
+        showStatus("Please add at least one item to your order.", "error");
+        return;
+      }
+
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+
+      const button = document.getElementById("submit-order");
+      button.disabled = true;
+      button.textContent = "Submitting...";
+
+      const payload = {
+        customerName: form.elements.customerName.value.trim(),
+        email: form.elements.email.value.trim(),
+        phone: form.elements.phone.value.trim(),
+        pickupDate: form.elements.pickupDate.value,
+        notes: form.elements.notes.value.trim(),
+        items: cart.map(item => ({
+          productId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          options: item.selections
+        })),
+        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/api/orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.message || "The server could not save your order.");
+        }
+
+        showStatus(
+          `Order request submitted successfully${result.orderId ? `! Reference: ${result.orderId}` : "!"} The church team will contact you to confirm your order.`,
+          "success"
+        );
+
+        cart.length = 0;
+        renderCart();
+        form.reset();
+      } catch (error) {
+        console.error("Order submission failed:", error);
+
+        showStatus(
+          "We could not submit your order. Please check your internet connection or try again later. If this continues, contact the church team.",
+          "error"
+        );
+      } finally {
+        button.textContent = "Submit Order Request";
+        button.disabled = cart.length === 0;
+      }
+    });
+
+    renderProducts();
+    renderCart();
+  </script>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

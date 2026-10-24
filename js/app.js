@@ -1,13 +1,619 @@
-const API_BASE_URL=window.CHURCH_API_BASE_URL||'/api';
-async function api(path,opt={}){const headers={...(opt.headers||{})};if(opt.body&&!(opt.body instanceof FormData))headers['Content-Type']='application/json';const r=await fetch(API_BASE_URL+path,{...opt,headers});if(!r.ok){let j={};try{j=await r.json()}catch{}throw Error(j.message||('API error '+r.status))}return r.json()}
-function nav(){let b=document.querySelector('.menu'),l=document.querySelector('.links');if(b)b.onclick=()=>l.classList.toggle('open');let cur=location.pathname.split('/').pop()||'index.html';document.querySelectorAll('.links a').forEach(a=>{if(a.getAttribute('href')===cur)a.classList.add('active')})}document.addEventListener('DOMContentLoaded',()=>{nav();loadGallery()});
-function toast(m){let e=document.querySelector('.toast');if(!e){alert(m);return}e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',3500)}
-async function submitOrder(e){e.preventDefault();let f=e.target,d=Object.fromEntries(new FormData(f).entries());try{const o=await api('/orders',{method:'POST',body:JSON.stringify(d)});toast('Order request submitted! Reference: '+o.id);f.reset()}catch(err){toast(err.message||'Unable to submit order. Please try again.')}}
-async function loadOrders(){let b=document.querySelector('#orders');if(!b)return;try{let os=await api('/orders',{headers:{'x-admin-password':sessionStorage.getItem('churchAdminPassword')||''}});b.innerHTML=os.length?os.map(o=>`<tr><td><b>${o.id}</b></td><td>${esc(o.customer)}</td><td>${esc(o.item)}</td><td>${o.qty}</td><td>₱${(+o.total).toLocaleString()}</td><td><span class="status ${o.status}">${o.status}</span></td><td><select onchange="updateStatus('${o.id}',this.value)">${['pending','processing','completed','cancelled'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`).join(''):'<tr><td colspan="7">No orders yet.</td></tr>';document.querySelector('#count').textContent=os.length;document.querySelector('#pending').textContent=os.filter(o=>o.status==='pending').length;document.querySelector('#revenue').textContent='₱'+os.filter(o=>o.status==='completed').reduce((a,o)=>a+ +o.total,0).toLocaleString()}catch(e){b.innerHTML='<tr><td colspan="7">'+esc(e.message)+' — check server setup.</td></tr>'}}
-async function updateStatus(id,status){try{await api('/orders/'+id,{method:'PATCH',headers:{'x-admin-password':sessionStorage.getItem('churchAdminPassword')||''},body:JSON.stringify({status})});toast('Order updated');loadOrders()}catch(e){toast(e.message)}}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function loadGallery(){const box=document.querySelector('[data-gallery]');if(!box)return;try{const events=await api('/events'),page=box.dataset.gallery;const items=events.filter(e=>e.page===page);box.innerHTML=items.length?items.map(e=>`<article class="event-card"><img src="${esc(e.image)}" alt="${esc(e.title)}"><div><h3>${esc(e.title)}</h3>${e.date?`<p>${esc(e.date)}</p>`:''}<p>${esc(e.description)}</p></div></article>`).join(''):'<p class="muted">Event photos will appear here.</p>'}catch(e){box.innerHTML='<p class="muted">Event gallery is temporarily unavailable.</p>'}}
-async function loadProducts(){const select=document.querySelector('select[name="item"]');if(!select)return;try{const products=await api('/products');select.innerHTML='<option value="">Choose an item</option>'+products.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} — ₱${Number(p.price).toLocaleString()}</option>`).join('')+'<option>Other (price to be confirmed)</option>';const list=document.querySelector('#product-list');if(list)list.innerHTML=products.map(p=>`<article class="product-card"><h3>${esc(p.name)}</h3><p>${esc(p.description||'')}</p><strong>₱${Number(p.price).toLocaleString()}</strong></article>`).join('')}catch(e){}}
-document.addEventListener('DOMContentLoaded',loadProducts);
-async function uploadEvent(e){e.preventDefault();const f=e.target,fd=new FormData(f),pass=sessionStorage.getItem('churchAdminPassword')||'';try{await api('/events',{method:'POST',headers:{'x-admin-password':pass},body:fd});toast('Event photo published to the selected ministry page.');f.reset()}catch(err){toast(err.message||'Upload failed')}}
-function setAdminPassword(){const p=prompt('Enter the website admin password');if(p){sessionStorage.setItem('churchAdminPassword',p);toast('Password set for this browser session.')}}
+
+/* =========================================================
+   GRACEVILLE CONSERVATIVE BAPTIST CHURCH
+   Main Website JavaScript
+   File: js/app.js
+   ========================================================= */
+
+/* -------------------------
+   API CONFIGURATION
+------------------------- */
+
+const API_BASE_URL = window.CHURCH_API_BASE_URL || "/api";
+
+const ORDER_STATUSES = [
+    "pending",
+    "processing",
+    "completed",
+    "cancelled"
+];
+
+
+/* -------------------------
+   API REQUEST HELPER
+------------------------- */
+
+async function api(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+
+    // Let the browser set the multipart boundary for file uploads.
+    if (
+        options.body &&
+        !(options.body instanceof FormData) &&
+        !headers["Content-Type"]
+    ) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    const response = await fetch(API_BASE_URL + path, {
+        ...options,
+        headers
+    });
+
+    if (!response.ok) {
+        let message = `API error ${response.status}`;
+
+        try {
+            const result = await response.json();
+            message = result.message || message;
+        } catch {
+            // The server did not return JSON.
+        }
+
+        throw new Error(message);
+    }
+
+    // Support endpoints that return no content.
+    if (response.status === 204) {
+        return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+        return response.json();
+    }
+
+    return null;
+}
+
+
+/* -------------------------
+   ADMIN SESSION
+------------------------- */
+
+function getAdminPassword() {
+    return sessionStorage.getItem("churchAdminPassword") || "";
+}
+
+function setAdminPassword() {
+    const password = prompt("Enter the website admin password");
+
+    if (password === null) {
+        return;
+    }
+
+    if (!password.trim()) {
+        toast("Please enter a password.");
+        return;
+    }
+
+    sessionStorage.setItem("churchAdminPassword", password);
+    toast("Admin password saved for this browser session.");
+}
+
+function clearAdminPassword() {
+    sessionStorage.removeItem("churchAdminPassword");
+    toast("Admin session password cleared.");
+}
+
+
+/* -------------------------
+   SAFE HTML AND IMAGE HELPERS
+------------------------- */
+
+function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[character]);
+}
+
+function safeImageUrl(value) {
+    if (!value || typeof value !== "string") {
+        return "";
+    }
+
+    try {
+        const url = new URL(value, window.location.origin);
+
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+            return "";
+        }
+
+        return url.href;
+    } catch {
+        return "";
+    }
+}
+
+function formatMoney(value) {
+    const amount = Number(value);
+
+    if (!Number.isFinite(amount)) {
+        return "₱0";
+    }
+
+    return "₱" + amount.toLocaleString("en-PH", {
+        maximumFractionDigits: 2
+    });
+}
+
+function getErrorMessage(error, fallback) {
+    return error instanceof Error && error.message
+        ? error.message
+        : fallback;
+}
+
+
+/* -------------------------
+   NOTIFICATION TOAST
+------------------------- */
+
+let toastTimer;
+
+function toast(message) {
+    const element = document.querySelector(".toast");
+
+    if (!element) {
+        alert(message);
+        return;
+    }
+
+    clearTimeout(toastTimer);
+
+    element.textContent = message;
+    element.style.display = "block";
+
+    toastTimer = setTimeout(() => {
+        element.style.display = "none";
+    }, 3500);
+}
+
+
+/* -------------------------
+   NAVIGATION
+------------------------- */
+
+function nav() {
+    const button = document.querySelector(".menu");
+    const links = document.querySelector(".links");
+
+    if (button && links) {
+        button.setAttribute("aria-expanded", "false");
+
+        button.addEventListener("click", () => {
+            const isOpen = links.classList.toggle("open");
+
+            button.setAttribute("aria-expanded", String(isOpen));
+            button.setAttribute(
+                "aria-label",
+                isOpen ? "Close navigation menu" : "Open navigation menu"
+            );
+        });
+
+        // Close the mobile menu after a navigation link is selected.
+        links.querySelectorAll("a").forEach(link => {
+            link.addEventListener("click", () => {
+                links.classList.remove("open");
+                button.setAttribute("aria-expanded", "false");
+                button.setAttribute("aria-label", "Open navigation menu");
+            });
+        });
+    }
+
+    // Highlight the current page.
+    const currentPage = window.location.pathname
+        .split("/")
+        .pop() || "index.html";
+
+    document.querySelectorAll(".links a").forEach(link => {
+        const href = link.getAttribute("href");
+
+        if (href === currentPage) {
+            link.classList.add("active");
+            link.setAttribute("aria-current", "page");
+        } else {
+            link.classList.remove("active");
+            link.removeAttribute("aria-current");
+        }
+    });
+}
+
+
+/* -------------------------
+   CUSTOMER ORDER SUBMISSION
+------------------------- */
+
+async function submitOrder(event) {
+    event.preventDefault();
+
+    const form = event.target;
+
+    if (!form.reportValidity()) {
+        return;
+    }
+
+    const orderData = Object.fromEntries(
+        new FormData(form).entries()
+    );
+
+    try {
+        const result = await api("/orders", {
+            method: "POST",
+            body: JSON.stringify(orderData)
+        });
+
+        const reference = result?.id;
+
+        toast(
+            reference
+                ? `Order request submitted! Reference: ${reference}`
+                : "Order request submitted successfully!"
+        );
+
+        form.reset();
+
+        // Refresh available products if an order changed the list.
+        loadProducts();
+    } catch (error) {
+        toast(
+            getErrorMessage(
+                error,
+                "Unable to submit order. Please try again."
+            )
+        );
+    }
+}
+
+
+/* -------------------------
+   ADMIN ORDER DASHBOARD
+------------------------- */
+
+async function loadOrders() {
+    const tableBody = document.querySelector("#orders");
+
+    if (!tableBody) {
+        return;
+    }
+
+    tableBody.innerHTML =
+        '<tr><td colspan="7">Loading orders...</td></tr>';
+
+    try {
+        const orders = await api("/orders", {
+            headers: {
+                "x-admin-password": getAdminPassword()
+            }
+        });
+
+        if (!Array.isArray(orders)) {
+            throw new Error("The server returned an invalid orders list.");
+        }
+
+        if (orders.length === 0) {
+            tableBody.innerHTML =
+                '<tr><td colspan="7">No orders yet.</td></tr>';
+        } else {
+            tableBody.innerHTML = orders.map(order => {
+                const status = ORDER_STATUSES.includes(order.status)
+                    ? order.status
+                    : "pending";
+
+                const options = ORDER_STATUSES.map(item => `
+                    <option value="${item}" ${item === status ? "selected" : ""}>
+                        ${item.charAt(0).toUpperCase() + item.slice(1)}
+                    </option>
+                `).join("");
+
+                return `
+                    <tr>
+                        <td><b>${esc(order.id)}</b></td>
+                        <td>${esc(order.customer)}</td>
+                        <td>${esc(order.item)}</td>
+                        <td>${esc(order.qty)}</td>
+                        <td>${formatMoney(order.total)}</td>
+                        <td>
+                            <span class="status ${status}">
+                                ${esc(status)}
+                            </span>
+                        </td>
+                        <td>
+                            <select
+                                class="order-status-select"
+                                data-order-id="${esc(order.id)}"
+                                aria-label="Change order status"
+                            >
+                                ${options}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        // Update dashboard statistics safely.
+        const countElement = document.querySelector("#count");
+        const pendingElement = document.querySelector("#pending");
+        const revenueElement = document.querySelector("#revenue");
+
+        if (countElement) {
+            countElement.textContent = orders.length;
+        }
+
+        if (pendingElement) {
+            pendingElement.textContent = orders.filter(
+                order => order.status === "pending"
+            ).length;
+        }
+
+        if (revenueElement) {
+            const revenue = orders
+                .filter(order => order.status === "completed")
+                .reduce((total, order) => {
+                    const amount = Number(order.total);
+                    return total + (Number.isFinite(amount) ? amount : 0);
+                }, 0);
+
+            revenueElement.textContent = formatMoney(revenue);
+        }
+
+    } catch (error) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    ${esc(getErrorMessage(
+                        error,
+                        "Unable to load orders."
+                    ))}
+                    — check your server and admin password.
+                </td>
+            </tr>
+        `;
+    }
+}
+
+
+/* -------------------------
+   UPDATE ORDER STATUS
+------------------------- */
+
+async function updateStatus(id, status) {
+    if (!ORDER_STATUSES.includes(status)) {
+        toast("Invalid order status.");
+        return;
+    }
+
+    try {
+        await api("/orders/" + encodeURIComponent(id), {
+            method: "PATCH",
+            headers: {
+                "x-admin-password": getAdminPassword()
+            },
+            body: JSON.stringify({ status })
+        });
+
+        toast("Order status updated successfully.");
+        await loadOrders();
+
+    } catch (error) {
+        toast(
+            getErrorMessage(error, "Unable to update order status.")
+        );
+
+        await loadOrders();
+    }
+}
+
+
+/* -------------------------
+   EVENT PHOTO GALLERIES
+------------------------- */
+
+async function loadGallery() {
+    const galleries = document.querySelectorAll("[data-gallery]");
+
+    if (!galleries.length) {
+        return;
+    }
+
+    // Show a loading message in each gallery.
+    galleries.forEach(gallery => {
+        gallery.innerHTML =
+            '<p class="muted">Loading event photos...</p>';
+    });
+
+    try {
+        const events = await api("/events");
+
+        if (!Array.isArray(events)) {
+            throw new Error("The server returned an invalid events list.");
+        }
+
+        galleries.forEach(gallery => {
+            const page = gallery.dataset.gallery;
+
+            const items = events.filter(event => event.page === page);
+
+            if (!items.length) {
+                gallery.innerHTML =
+                    '<p class="muted">Event photos will appear here.</p>';
+                return;
+            }
+
+            gallery.innerHTML = items.map(event => {
+                const image = safeImageUrl(event.image);
+
+                return `
+                    <article class="event-card">
+                        ${
+                            image
+                                ? `
+                                    <img
+                                        src="${esc(image)}"
+                                        alt="${esc(event.title || "Church event photo")}"
+                                        loading="lazy"
+                                    >
+                                `
+                                : ""
+                        }
+
+                        <div>
+                            <h3>${esc(event.title || "Church Event")}</h3>
+
+                            ${
+                                event.date
+                                    ? `<p>${esc(event.date)}</p>`
+                                    : ""
+                            }
+
+                            <p>${esc(event.description || "")}</p>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        });
+
+    } catch (error) {
+        galleries.forEach(gallery => {
+            gallery.innerHTML =
+                '<p class="muted">Event gallery is temporarily unavailable. Please try again later.</p>';
+        });
+
+        console.error("Gallery loading failed:", error);
+    }
+}
+
+
+/* -------------------------
+   PRODUCTS AND ORDER FORM
+------------------------- */
+
+async function loadProducts() {
+    const select = document.querySelector('select[name="item"]');
+    const productList = document.querySelector("#product-list");
+
+    if (!select && !productList) {
+        return;
+    }
+
+    try {
+        const products = await api("/products");
+
+        if (!Array.isArray(products)) {
+            throw new Error("The server returned an invalid products list.");
+        }
+
+        if (select) {
+            const previousValue = select.value;
+
+            select.innerHTML =
+                '<option value="">Choose an item</option>' +
+                products.map(product => `
+                    <option value="${esc(product.name)}">
+                        ${esc(product.name)} — ${formatMoney(product.price)}
+                    </option>
+                `).join("") +
+                '<option value="Other (price to be confirmed)">Other (price to be confirmed)</option>';
+
+            // Keep the selected item if it is still available.
+            if (
+                previousValue &&
+                Array.from(select.options).some(
+                    option => option.value === previousValue
+                )
+            ) {
+                select.value = previousValue;
+            }
+        }
+
+        if (productList) {
+            productList.innerHTML = products.length
+                ? products.map(product => `
+                    <article class="product-card">
+                        <h3>${esc(product.name)}</h3>
+                        <p>${esc(product.description || "")}</p>
+                        <strong>${formatMoney(product.price)}</strong>
+                    </article>
+                `).join("")
+                : '<p class="muted">No products are available at the moment.</p>';
+        }
+
+    } catch (error) {
+        console.error("Product loading failed:", error);
+
+        if (productList) {
+            productList.innerHTML =
+                '<p class="muted">Products are temporarily unavailable.</p>';
+        }
+    }
+}
+
+
+/* -------------------------
+   ADMIN EVENT PHOTO UPLOAD
+------------------------- */
+
+async function uploadEvent(event) {
+    event.preventDefault();
+
+    const form = event.target;
+
+    if (!form.reportValidity()) {
+        return;
+    }
+
+    const formData = new FormData(form);
+
+    try {
+        await api("/events", {
+            method: "POST",
+            headers: {
+                "x-admin-password": getAdminPassword()
+            },
+            body: formData
+        });
+
+        toast("Event photo published successfully.");
+
+        form.reset();
+
+        // Refresh any gallery on the current page.
+        await loadGallery();
+
+    } catch (error) {
+        toast(
+            getErrorMessage(error, "Photo upload failed. Please try again.")
+        );
+    }
+}
+
+
+/* -------------------------
+   INITIALIZE WEBSITE
+------------------------- */
+
+document.addEventListener("DOMContentLoaded", () => {
+    nav();
+    loadGallery();
+    loadProducts();
+
+    // Handle status changes without inline JavaScript in generated HTML.
+    document.addEventListener("change", event => {
+        const select = event.target.closest(".order-status-select");
+
+        if (!select) {
+            return;
+        }
+
+        const orderId = select.dataset.orderId;
+
+        if (orderId) {
+            updateStatus(orderId, select.value);
+        }
+    });
+});
